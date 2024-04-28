@@ -19,10 +19,11 @@
 #include <QDateTimeAxis>
 #include <QtGlobal>
 #include <QEventLoop>
+#include <QTextStream>
 #include "CRC16.h"
 
 #define CheckTime 1000
-#define WAITIME 200
+#define WAITIME 100
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -74,6 +75,11 @@ private slots:
     void waitForSignal();
     void onSignalReceived();
 
+    //折线图相关操作
+    void setupChar();
+    void addValueToChart();
+    void checkChart();
+
     //以下是输出数据到界面的方法
     void showDatas();
 
@@ -95,6 +101,13 @@ private:
     double tensile = 9999;
     int waitNums =0;
     int ExpTimes =0;
+
+    //图表相关
+    QChart* chart;
+    QValueAxis* axisX;
+    QValueAxis* axisY;
+    QLineSeries* seriesY;
+    qreal num=0;
 
 };
 #endif // MAINWINDOW_H

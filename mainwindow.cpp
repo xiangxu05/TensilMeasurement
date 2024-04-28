@@ -20,11 +20,17 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setupSocket(socket);
+    setupChar();
     Ftimer = new QTimer(this);
     Stimer = new QTimer(this);
+    setWindowTitle("拉力监测 V1.0");
+    setWindowIcon(QIcon(":/new/prefix1/1.ico"));
+    ui->preData->setChecked(true);
+    ui->checkCurve->setChecked(true);
     connect(ui->checkFile,&QCheckBox::toggled,this,&MainWindow::checkedFile);
     connect(Ftimer, &QTimer::timeout, this, &MainWindow::onTimerTimeout);//关联一个计时器
     connect(Stimer, &QTimer::timeout, this, &MainWindow::STimerTimeout);//关联一个计时器
+
 }
 
 MainWindow::~MainWindow()
@@ -196,19 +202,44 @@ void MainWindow::on_startButton_clicked()
 {
     if(ui->connectButton->text()=="取消连接"){
         if(ui->infoLabel_2->text()=="已在线" && ui->infoLabel_3->text()=="已在线"){
-            qDebug()<<"1";
             if(ui->startButton->text()=="开始监测"){
-                qDebug()<<"2";
                 ui->startButton->setText("暂停监测");
+                int tryTime = 0;
                 while(tensile==9999){
                     readHoldRegisters(socket,0x01,0x03,0x07D0,0x0002);
                     waitForSignal();
+                    tryTime++;
+                    if(tryTime >20){
+                        break;
+                        QMessageBox::warning(this,"警告","设备通讯错误！");
+                        on_startButton_clicked();
+                    }
                 }
                 if(!ExpTimes){
                     ExpTimes=ui->TimeEdit->text().toInt();
                 }
+                QString fileName = ui->FilePath->text();
+                if(fileName.isEmpty())
+                {
+                    QMessageBox::warning(this,"警告","未指定存储文件路径！");
+                    ui->startButton->setText("开始监测");
+                    return;
+                }
+                else{
+                    QFile file(fileName);
+                    if (!file.open(QIODevice::Append | QIODevice::Text)) {
+                        QMessageBox::warning(this,"警告","无法保存为该文件，请检查！");
+                    }
+                    QTextStream out(&file);
+                    out<<"Nums"<<","<<"Tensile"<<","<<"\n";
+
+                    file.close();
+                }
                 Ftimer->start(WAITIME);
                 Stimer->start(CheckTime);
+                ui->upButton->setDisabled(true);
+                ui->downButton->setEnabled(false);
+                ui->checkFile->setEnabled(false);
                 testUpon();
             }
             else{
@@ -216,10 +247,27 @@ void MainWindow::on_startButton_clicked()
                 on_stopButton_clicked();
                 Ftimer->stop();
                 Stimer->stop();
+                ui->upButton->setEnabled(true);
+                ui->downButton->setEnabled(true);
+                ui->checkFile->setEnabled(true);
+                if(!ExpTimes){
+                    num=0;
+                    seriesY->clear();
+                }
             }
         }else{
             QMessageBox::warning(this,"警告","设备未在线，请检查！");
             ui->startButton->text()="开始监测";
+            on_stopButton_clicked();
+            Ftimer->stop();
+            Stimer->stop();
+            if(!ExpTimes){
+                num=0;
+                seriesY->clear();
+            }
+            ui->upButton->setEnabled(true);
+            ui->downButton->setEnabled(true);
+            ui->checkFile->setEnabled(true);
             //停止时钟
         }
     }
@@ -251,7 +299,6 @@ void MainWindow::onSocketReadyRead()
             QDataStream stream(byteArray);
             int decimalValue;
             stream >> decimalValue;
-            qDebug()<<decimalValue;
             if (decimalValue > 61440){
                 decimalValue = decimalValue -65536;
             }//由于量程一般不会达到六百多，因此大于F000的直接用补码表示就是负数了。
@@ -368,11 +415,7 @@ void MainWindow::outputData(){
             QMessageBox::warning(this,"警告","无法保存为该文件，请检查！");
         }
         QTextStream out(&file);
-        //out<<outputDatas.Unix_time<<","<<outputDatas.Microseconds<<",";
-        //out<<outputDatas.X1<<","<<outputDatas.Y1<<","<<outputDatas.Z1<<","<<outputDatas.X2<<","<<outputDatas.Y2<<","<<outputDatas.Z2<<",";
-        //out<<outputDatas.longitude<<","<<outputDatas.latitude<<","<<outputDatas.height<<","<<outputDatas.Roll<<","<<outputDatas.Pitch<<",";
-        //out<<outputDatas.Heading<<","<<outputDatas.Velocity_north<<","<<outputDatas.Velocity_east<<","<<outputDatas.Velocity_down;
-        //out<<"\n";
+        out<<num<<","<<tensile<<","<<"\n";
 
         file.close();
         return;
@@ -385,30 +428,29 @@ void MainWindow::onTimerTimeout(){
     // 每次定时器超时时调用readHoldRegisters方法
     //readHoldRegisters(socket,0x02,0x03,0x1000,0x0001);
     waitNums++;
-    if(waitNums==10){
+    if(waitNums==8){
         readHoldRegisters(socket,0x02,0x03,0x1000,0x0001);
+        waitNums=0;
         QThread::msleep(50);
     }
     readHoldRegisters(socket,0x01,0x03,0x07D0,0x0002);
 
     showDatas();
     outputData();
-    //addValueToChart();
+    addValueToChart();
 }
 
 void MainWindow::STimerTimeout(){
-    if(ExpTimes){
-        int Min=ExpTimes/60;
-        int Sec=ExpTimes%60;
-        ui->TimeLabel->setText(QString::number(Min)+"分"+QString::number(Sec)+"秒");
-        QString styleSheet = "color: black; font-size: 24px; font-weight: bold;text-align: center;";
-        ui->TimeLabel->setStyleSheet(styleSheet);
-        ui->TimeLabel->setAlignment(Qt::AlignCenter);
-    }
-    else{
+    ExpTimes--;
+    int Min=ExpTimes/60;
+    int Sec=ExpTimes%60;
+    ui->TimeLabel->setText(QString::number(Min)+"分"+QString::number(Sec)+"秒");
+    QString styleSheet = "color: black; font-size: 24px; font-weight: bold;text-align: center;";
+    ui->TimeLabel->setStyleSheet(styleSheet);
+    ui->TimeLabel->setAlignment(Qt::AlignCenter);
+    if(!ExpTimes){
         on_startButton_clicked();
     }
-    ExpTimes--;
     if((CheckFlag & 0x0F) == 0x00){
         ui->statuLabel3->setStyleSheet(redSignal);
         ui->infoLabel_3->setText("未在线");
@@ -432,14 +474,92 @@ void MainWindow::onSignalReceived(){
 
 void MainWindow::showDatas(){
     QString styleSheet = "color: black; font-size: 24px; font-weight: bold;text-align: center;";
-    ui->TensileLabel->setText(QString::number(tensile,'f', 2));
-    ui->TensileLabel->setStyleSheet(styleSheet);
-    ui->TensileLabel->setAlignment(Qt::AlignCenter);
+    if(ui->preData->isChecked()){
+        ui->TensileLabel->setText(QString::number(tensile,'f', 3));
+        ui->TensileLabel->setStyleSheet(styleSheet);
+        ui->TensileLabel->setAlignment(Qt::AlignCenter);
+    }
+    else{
+        ui->TensileLabel->setText("--");
+        ui->TensileLabel->setStyleSheet(styleSheet);
+        ui->TensileLabel->setAlignment(Qt::AlignCenter);
+    }
 }
 
 void MainWindow::on_startButton_2_clicked()
 {
     ExpTimes=0;
+    int Min=ExpTimes/60;
+    int Sec=ExpTimes%60;
+    ui->TimeLabel->setText(QString::number(Min)+"分"+QString::number(Sec)+"秒");
+    QString styleSheet = "color: black; font-size: 24px; font-weight: bold;text-align: center;";
+    ui->TimeLabel->setStyleSheet(styleSheet);
+    ui->TimeLabel->setAlignment(Qt::AlignCenter);
+    if(ui->startButton->text()=="暂停监测"){
+        on_startButton_clicked();
+    }
+    tensile = 9999;
+    ui->TensileLabel->setText("--");
+    ui->TensileLabel->setStyleSheet(styleSheet);
+    ui->TensileLabel->setAlignment(Qt::AlignCenter);
+
+    num=0;
+    seriesY->clear();
     //关闭所有功能，重置所有数据
 }
 
+void MainWindow::setupChar(){
+
+    //初始化图表框架
+    chart = new QChart();
+    chart->setTitle("实时磁感应强度曲线");
+    ui->curve->setChart(chart);
+
+    //初始化折线序列
+    seriesY = new QLineSeries;
+    seriesY->setName("拉力值/N");
+
+    chart->addSeries(seriesY);
+    axisX = new QValueAxis;
+    axisX->setTickCount(10);
+
+    chart->setAxisX(axisX,seriesY);
+
+    axisX->setRange(0,num+10);
+
+
+    axisY = new QValueAxis;
+    axisY->setRange(-10,300);
+    chart->setAxisY(axisY,seriesY);
+
+}
+
+void MainWindow::addValueToChart(){
+    if(ui->checkCurve->isChecked()){
+        seriesY->append(num, tensile);
+        axisX->setMin(num-((30000/WAITIME)));
+        axisX->setMax(num);
+        num++;
+        qreal maxValue = std::numeric_limits<qreal>::lowest();
+        qreal minValue = std::numeric_limits<qreal>::max();
+
+        // 遍历系列中的数据点，找到最大值
+        foreach (const QPointF &point, seriesY->points()) {
+            minValue = std::min(minValue, point.y());
+            maxValue = std::max(maxValue, point.y());
+        }
+        int intMax = static_cast<int>(maxValue) + 10;
+        int intMin = static_cast<int>(minValue) - 10;
+        axisY->setMin(intMin);
+        axisY->setMax(intMax);
+    }
+    else{
+        return;
+    }
+}
+
+void MainWindow::checkChart(){
+    if(!ui->checkCurve->isChecked()){
+        seriesY->clear();
+    }
+}
