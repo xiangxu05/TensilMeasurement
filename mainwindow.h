@@ -101,6 +101,7 @@ private:
 
     //实时拉力值
     double tensile = 9999;
+    bool Vflag =true;
     int waitNums =0;
     int ExpTimes =0;
 

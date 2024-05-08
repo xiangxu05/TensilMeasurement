@@ -306,6 +306,11 @@ void MainWindow::onSocketReadyRead()
             tensile = tensile /100* 9.8;
         }
         else if(responseData[0] == 0x02){
+            if(responseData[2] == 0x10 && responseData[3] == 0x00 && responseData[4] == 0x00 && responseData[5] == 0x00){
+                Vflag=false;
+            }else{
+                Vflag=true;
+            }
             CheckFlag |= 0xF0;
             ui->statuLabel2->setStyleSheet(greenSignal);
             ui->infoLabel_2->setText("已在线");
@@ -450,8 +455,9 @@ void MainWindow::STimerTimeout(){
     QString styleSheet = "color: black; font-size: 24px; font-weight: bold;text-align: center;";
     ui->TimeLabel->setStyleSheet(styleSheet);
     ui->TimeLabel->setAlignment(Qt::AlignCenter);
-    if(!ExpTimes){
+    if(!ExpTimes || Vflag==false){
         on_startButton_clicked();
+        ui->recButton->setText("记录数据");
     }
     if((CheckFlag & 0x0F) == 0x00){
         ui->statuLabel3->setStyleSheet(redSignal);
