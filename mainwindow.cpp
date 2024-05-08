@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupChar();
     Ftimer = new QTimer(this);
     Stimer = new QTimer(this);
-    setWindowTitle("拉力监测 V1.01");
+    setWindowTitle("拉力监测 V1.02");
     setWindowIcon(QIcon(":/new/prefix1/1.ico"));
     ui->preData->setChecked(true);
     ui->checkCurve->setChecked(true);
@@ -217,23 +217,23 @@ void MainWindow::on_startButton_clicked()
                 }
                 if(!ExpTimes){
                     ExpTimes=ui->TimeEdit->text().toInt();
-                }
-                QString fileName = ui->FilePath->text();
-                if(fileName.isEmpty())
-                {
-                    QMessageBox::warning(this,"警告","未指定存储文件路径！");
-                    ui->startButton->setText("开始监测");
-                    return;
-                }
-                else{
-                    QFile file(fileName);
-                    if (!file.open(QIODevice::Append | QIODevice::Text)) {
-                        QMessageBox::warning(this,"警告","无法保存为该文件，请检查！");
+                    QString fileName = ui->FilePath->text();
+                    if(fileName.isEmpty())
+                    {
+                        QMessageBox::warning(this,"警告","未指定存储文件路径！");
+                        ui->startButton->setText("开始监测");
+                        return;
                     }
-                    QTextStream out(&file);
-                    out<<"Nums"<<","<<"Tensile"<<","<<"\n";
+                    else{
+                        QFile file(fileName);
+                        if (!file.open(QIODevice::Append | QIODevice::Text)) {
+                            QMessageBox::warning(this,"警告","无法保存为该文件，请检查！");
+                        }
+                        QTextStream out(&file);
+                        out<<"Nums"<<","<<"Tensile"<<","<<"\n";
 
-                    file.close();
+                        file.close();
+                    }
                 }
                 Ftimer->start(WAITIME);
                 Stimer->start(CheckTime);
@@ -247,6 +247,7 @@ void MainWindow::on_startButton_clicked()
                 on_stopButton_clicked();
                 Ftimer->stop();
                 Stimer->stop();
+                ui->recButton->setText("记录数据");
                 ui->upButton->setEnabled(true);
                 ui->downButton->setEnabled(true);
                 ui->checkFile->setEnabled(true);

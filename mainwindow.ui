@@ -257,7 +257,7 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>192.168.99.188</string>
+              <string>10.10.100.254</string>
              </property>
             </widget>
            </item>
