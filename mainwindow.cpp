@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupChar();
     Ftimer = new QTimer(this);
     Stimer = new QTimer(this);
-    setWindowTitle("拉力监测 V1.0");
+    setWindowTitle("拉力监测 V1.01");
     setWindowIcon(QIcon(":/new/prefix1/1.ico"));
     ui->preData->setChecked(true);
     ui->checkCurve->setChecked(true);
