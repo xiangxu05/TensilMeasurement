@@ -436,7 +436,9 @@ void MainWindow::onTimerTimeout(){
     readHoldRegisters(socket,0x01,0x03,0x07D0,0x0002);
 
     showDatas();
-    outputData();
+    if(ui->recButton->text()=="停止记录"){
+        outputData();
+    }
     addValueToChart();
 }
 
@@ -563,3 +565,13 @@ void MainWindow::checkChart(){
         seriesY->clear();
     }
 }
+
+void MainWindow::on_recButton_clicked()
+{
+    if(ui->recButton->text()=="记录数据"){
+        ui->recButton->setText("停止记录");
+    }else{
+        ui->recButton->setText("记录数据");
+    }
+}
+

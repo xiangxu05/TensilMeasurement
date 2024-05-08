@@ -85,6 +85,8 @@ private slots:
 
     void on_startButton_2_clicked();
 
+    void on_recButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 
